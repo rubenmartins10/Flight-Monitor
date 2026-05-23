@@ -15,12 +15,17 @@ export default function RegisterPage() {
     if (pw.length < 6) { setError('Password deve ter pelo menos 6 caracteres.'); return; }
     setLoading(true); setError('');
     const supabase = createClient();
-    const { error: err } = await supabase.auth.signUp({
-      email:    e.target.email.value,
-      password: pw,
-    });
-    if (err) { setError(err.message); setLoading(false); }
-    else { window.location.href = '/dashboard'; }
+    try {
+      const { error: err } = await supabase.auth.signUp({
+        email:    e.target.email.value,
+        password: pw,
+      });
+      if (err) { setError(err.message); setLoading(false); }
+      else { window.location.href = '/dashboard'; }
+    } catch (e) {
+      setError(e?.message || 'Erro ao criar conta.');
+      setLoading(false);
+    }
   }
 
   return (

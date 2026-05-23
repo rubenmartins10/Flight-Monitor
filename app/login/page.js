@@ -10,15 +10,22 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email:    e.target.email.value,
-        password: e.target.password.value,
-      }),
-    });
-    const data = await res.json();
+    let res, data = {};
+    try {
+      res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email:    e.target.email.value,
+          password: e.target.password.value,
+        }),
+      });
+      try { data = await res.json(); } catch {}
+    } catch (fetchErr) {
+      setError(fetchErr.message || 'Erro de rede.');
+      setLoading(false);
+      return;
+    }
     if (!res.ok) {
       setError(data.error || 'Erro ao entrar.');
       setLoading(false);
