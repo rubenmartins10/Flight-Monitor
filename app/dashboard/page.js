@@ -753,20 +753,28 @@ export default function Dashboard() {
     });
   }, []);
 
+  async function safeJson(res) {
+    try { return await res.json(); } catch { return {}; }
+  }
+
   async function loadRoutes() {
     setLoading(true);
-    const res  = await fetch('/api/routes');
-    const data = await res.json();
-    setRoutes(Array.isArray(data) ? data : []);
+    try {
+      const res  = await fetch('/api/routes');
+      const data = await safeJson(res);
+      setRoutes(Array.isArray(data) ? data : []);
+    } catch { setRoutes([]); }
     setLoading(false);
   }
 
   async function handleCheckAll() {
     setChecking(true);
     setStatus('A verificar todos os preços...');
-    const res  = await fetch('/api/prices/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-    const data = await res.json();
-    setStatus(`Concluído — ${data.alerts_sent} alerta(s) enviado(s)`);
+    try {
+      const res  = await fetch('/api/prices/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const data = await safeJson(res);
+      setStatus(`Concluído — ${data.alerts_sent ?? 0} alerta(s) enviado(s)`);
+    } catch { setStatus('Erro ao verificar preços.'); }
     await loadRoutes();
     setChecking(false);
   }
@@ -800,13 +808,16 @@ export default function Dashboard() {
   }
 
   async function handleAdd(data) {
-    const res   = await fetch('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    const route = await res.json();
-    setRoutes(r => [...r, { ...route, price_history: [] }]);
-    // Auto-check prices immediately after creating the route
-    setStatus('A pesquisar preços para a nova rota...');
-    await fetch('/api/prices/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: route.id }) });
-    setStatus('');
+    try {
+      const res   = await fetch('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      const route = await safeJson(res);
+      if (route.id) {
+        setRoutes(r => [...r, { ...route, price_history: [] }]);
+        setStatus('A pesquisar preços para a nova rota...');
+        await fetch('/api/prices/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: route.id }) });
+        setStatus('');
+      }
+    } catch { setStatus('Erro ao adicionar rota.'); }
     await loadRoutes();
   }
 
