@@ -2,6 +2,13 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
+  const path = request.nextUrl.pathname;
+  const isAuthPage  = path.startsWith('/login') || path.startsWith('/register');
+  const isApiRoute  = path.startsWith('/api');
+
+  // Skip session check for API routes — they handle their own auth
+  if (isApiRoute) return NextResponse.next();
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -21,12 +28,15 @@ export async function middleware(request) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  let session = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    session = data?.session ?? null;
+  } catch {
+    // If Supabase is unreachable, treat as no session
+  }
 
-  const path = request.nextUrl.pathname;
-  const isAuthPage  = path.startsWith('/login') || path.startsWith('/register');
-  const isApiRoute  = path.startsWith('/api');
-  const isProtected = !isAuthPage && !isApiRoute && path !== '/';
+  const isProtected = !isAuthPage && path !== '/';
 
   if (!session && isProtected) {
     return NextResponse.redirect(new URL('/login', request.url));
