@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const [error, setError]     = useState('');
@@ -10,27 +11,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    let res, data = {};
     try {
-      res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email:    e.target.email.value,
-          password: e.target.password.value,
-        }),
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email:    e.target.email.value,
+        password: e.target.password.value,
       });
-      try { data = await res.json(); } catch {}
-    } catch (fetchErr) {
-      setError(fetchErr.message || 'Erro de rede.');
+      if (error) {
+        setError(error.message || 'Credenciais incorretas.');
+        setLoading(false);
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch (err) {
+      setError(err?.message || 'Erro ao entrar.');
       setLoading(false);
-      return;
-    }
-    if (!res.ok) {
-      setError(data.error || 'Erro ao entrar.');
-      setLoading(false);
-    } else {
-      window.location.href = '/dashboard';
     }
   }
 
